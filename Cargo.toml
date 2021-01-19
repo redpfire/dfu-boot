@@ -1,0 +1,29 @@
+[package]
+name = "dfu-boot"
+version = "0.2.1"
+authors = ["redpfire <redpixafire@gmail.com>"]
+edition = "2018"
+
+[profile.dev.package."*"]
+opt-level = 'z'
+
+[profile.release]
+opt-level = 's'
+lto = true
+codegen-units = 1
+debug = 0
+
+[patch.crates-io]
+usb-device = { path = "./usb-device" }
+
+[dependencies]
+stm32f1xx-hal = {version = "0.7.0", features = ["stm32f103", "rt", "medium"]}
+cortex-m-rt = "0.6.13"
+cortex-m = { version = "0.6.4", features = ["inline-asm"] }
+embedded-hal = "0.2.4"
+panic-halt = "0.2.0"
+cortex-m-rtic = "0.5.5"
+usb-device = { version = "^0.2.7", features = ["control-buffer-256"]}
+stm32-usbd = { version = "0.5.0", features = ["ram_access_1x16"]}
+usbd-webusb = "1.0.0"
+nb = "1.0.0"
