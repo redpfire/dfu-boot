@@ -20,3 +20,7 @@ Could run on other STM32 devices, currently not tested.
 - [ ] Software or hardware assisted crypto
 - [ ] CRC or SHA firmware integrity test
 - [ ] DFU upload of existing firmware (to host)
+
+### License
+Licensed under Apache License, Version 2.0 ([LICENSE](LICENSE) or
+  http://www.apache.org/licenses/LICENSE-2.0)

@@ -1,6 +1,7 @@
 [package]
 name = "dfu-boot"
 version = "0.2.1"
+license = "Apache-2.0"
 authors = ["redpfire <redpixafire@gmail.com>"]
 edition = "2018"
 
