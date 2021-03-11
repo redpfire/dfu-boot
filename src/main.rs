@@ -18,7 +18,7 @@ use stm32f1xx_hal::{
     pac,
     gpio::{ Floating, Input, Output, PushPull, gpioa::{PA11, PA12}, gpioc::PC13, State },
     timer::{Timer, CountDownTimer, Event},
-    serial::{Serial, Config},
+    serial::{Serial},
 };
 use embedded_hal::digital::v2::OutputPin;
 use embedded_hal::digital::v2::InputPin;
@@ -32,10 +32,12 @@ use usb_device::{
 use usbd_webusb::*;
 
 mod dfu;
+mod flags;
+mod flash;
+mod util;
+mod config;
 
 use crate::dfu::*;
-
-const USB_PRODUCT: &'static str = concat!("DFU Bootloader ", env!("CARGO_PKG_VERSION"));
 
 pub struct Peripheral {
     pub usb: USB,
@@ -137,32 +139,35 @@ const APP: () = {
 
         let mut afio = device.AFIO.constrain(&mut rcc.apb2);
 
-        let pin_tx = gpioa.pa9.into_alternate_push_pull(&mut gpioa.crh);
-        let pin_rx = gpioa.pa10;
+        let tx = if config::DEBUG {
+            let pin_tx = gpioa.pa9.into_alternate_push_pull(&mut gpioa.crh);
+            let pin_rx = gpioa.pa10;
 
-        let serial = Serial::usart1(
-            device.USART1,
-            (pin_tx, pin_rx),
-            &mut afio.mapr,
-            Config::default().baudrate(9_600.bps()),
-            clocks,
-            &mut rcc.apb2,
-        );
+            let serial = Serial::usart1(
+                device.USART1,
+                (pin_tx, pin_rx),
+                &mut afio.mapr,
+                config::usart1_config(),
+                clocks,
+                &mut rcc.apb2,
+            );
+            let (tx_, _) = serial.split();
+            Some(tx_)
+        } else { None };
 
-        let (tx, _) = serial.split();
 
         let dfu = Dfu::new(USB_BUS.as_ref().unwrap(), true, tx);
         if !(gpioc.pc14.is_high().ok().unwrap() || check_sw_int()) {
             // will fail if user code is not present or legit
-            unsafe { jump_to_usercode(); }
-            _log_str("User Code not present: Entering bootloader\r\n");
+            unsafe { util::jump_to_usercode(); }
+            util::_log_str("User Code not present: Entering bootloader\r\n");
         }
         else {
-            _log_str("Button pressed or Software Reboot: Entering bootloader\r\n");
+            util::_log_str("Button pressed or Software Reboot: Entering bootloader\r\n");
         }
 
         let wusb = WebUsb::new(USB_BUS.as_ref().unwrap(), url_scheme::HTTPS,
-                            "devanlai.github.io/webdfu/dfu-util");
+                            config::WEBUSB_URL);
 
         let mut blinks = 2;
         match dfu.flags() {
@@ -180,10 +185,9 @@ const APP: () = {
 
         let usb_dev =
             UsbDeviceBuilder::new(USB_BUS.as_ref().unwrap(), UsbVidPid(0x41ca, 0x2137))
-            .manufacturer("aika")
-            // .product("DFU Bootloader " + crate_version!())
-            .product(USB_PRODUCT)
-            .serial_number("8971842209015648")
+            .manufacturer(config::USB_MANUFACTURER)
+            .product(config::USB_PRODUCT)
+            .serial_number(config::USB_SERIAL_NO)
             .max_packet_size_0(64)
             // .device_release(0x0200)
             .build();
