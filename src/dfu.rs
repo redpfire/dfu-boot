@@ -195,11 +195,11 @@ impl<B:UsbBus> UsbClass<B> for Dfu<'_, B> {
         ])
     }
     fn get_configuration_descriptors(&self, writer: &mut DescriptorWriter) -> Result<()> {
-        writer.interface_ex(self.comm_if,
+        writer.interface_alt(self.comm_if, 0,
                             CLASS_APPLICATION_SPECIFIC,
                             SUBCLASS_DFU,
                             PROTOCOL_DFU_MODE,
-                            0, self.def_str.into())?;
+                            Some(self.def_str))?;
 
         writer.write(DESC_DFU_FUNCTIONAL, &[
                      0x4 // manifestation tolerant
