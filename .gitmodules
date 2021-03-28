@@ -1,3 +1,0 @@
-[submodule "usb-device"]
-	path = usb-device
-	url = https://github.com/redpfire/usb-device
