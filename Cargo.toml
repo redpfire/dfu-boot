@@ -14,8 +14,8 @@ lto = true
 codegen-units = 1
 debug = 0
 
-# [patch.crates-io]
-# usb-device = { path = "./usb-device" }
+[patch.crates-io]
+usb-device = { path = "./usb-device" }
 
 [dependencies]
 stm32f1xx-hal = {version = "0.7.0", features = ["stm32f103", "rt", "medium"]}

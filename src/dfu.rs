@@ -81,7 +81,8 @@ const BIGGEST_PAGE: usize = 2048;
 pub struct Dfu<'a, B: UsbBus> {
     woosh: PhantomData<B>,
     comm_if: InterfaceNumber,
-    def_str: StringIndex,
+    strs: [StringIndex; config::ALT_SETTINGS],
+    curr_alt: u8,
     upload_capable: bool,
     download_capable: bool,
     state: DfuState,
@@ -99,10 +100,11 @@ impl<B: UsbBus> Dfu<'_, B> {
     pub fn new(alloc: &UsbBusAllocator<B>, download_capable: bool, tx: Option<Tx<USART1>>) -> Dfu<'_, B> {
         unsafe { LOGGER = tx }
         let flags = flags::read_bl_flags();
-        Dfu {
+        let mut d = Dfu {
             woosh: PhantomData,
             comm_if: alloc.interface(),
-            def_str: alloc.string(),
+            strs: unsafe { mem::zeroed() },
+            curr_alt: 0,
             upload_capable: false,
             download_capable: download_capable,
             state: DfuState::DfuIdle,
@@ -114,7 +116,11 @@ impl<B: UsbBus> Dfu<'_, B> {
             page_buffer: unsafe { mem::zeroed() },
             page_buffer_index: 0,
             flags: flags,
+        };
+        for i in 0..config::ALT_SETTINGS {
+            d.strs[i] = alloc.string();
         }
+        d
     }
 
     pub fn flags(&self) -> core::option::Option<&'_ flags::BlFlags> {
@@ -195,11 +201,13 @@ impl<B:UsbBus> UsbClass<B> for Dfu<'_, B> {
         ])
     }
     fn get_configuration_descriptors(&self, writer: &mut DescriptorWriter) -> Result<()> {
-        writer.interface_alt(self.comm_if, 0,
-                            CLASS_APPLICATION_SPECIFIC,
-                            SUBCLASS_DFU,
-                            PROTOCOL_DFU_MODE,
-                            Some(self.def_str))?;
+        for alt in 0..config::ALT_SETTINGS {
+            writer.interface_alt(self.comm_if, alt as u8,
+                                CLASS_APPLICATION_SPECIFIC,
+                                SUBCLASS_DFU,
+                                PROTOCOL_DFU_MODE,
+                                Some(self.strs[alt]))?;
+        }
 
         writer.write(DESC_DFU_FUNCTIONAL, &[
                      0x4 // manifestation tolerant
@@ -214,12 +222,31 @@ impl<B:UsbBus> UsbClass<B> for Dfu<'_, B> {
         Ok(())
     }
 
-    fn get_string(&self, index: StringIndex, _lang_id: u16) -> Option<&str> {
-        if index == self.def_str {
-            Some(config::DFU_AL0)
+    fn get_alt_setting(&mut self, interface: InterfaceNumber) -> Option<u8> {
+        if interface == self.comm_if {
+            Some(self.curr_alt)
         } else {
             None
         }
+    }
+
+    fn set_alt_setting(&mut self, interface: InterfaceNumber, alt: u8) -> bool {
+        if interface == self.comm_if {
+            self.curr_alt = alt;
+            true
+        }
+        else {
+            false
+        }
+    }
+
+    fn get_string(&self, index: StringIndex, _lang_id: u16) -> Option<&str> {
+        for i in 0..config::ALT_SETTINGS {
+            if self.strs[i] == index {
+                return Some(config::ALT_STRS[i]);
+            }
+        }
+        None
     }
 
     fn control_in(&mut self, xfer: ControlIn<B>) {

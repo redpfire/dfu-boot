@@ -11,8 +11,8 @@ pub(crate) const USB_MANUFACTURER: &'static str = "aika";
 pub(crate) const USB_PRODUCT: &'static str = concat!("DFU Bootloader ", env!("CARGO_PKG_VERSION"));
 pub(crate) const USB_SERIAL_NO: &'static str = "8971842209015648";
 
-// Alternate Setting 0 name string
-pub(crate) const DFU_AL0: &'static str = concat!("DFU Bootloader ", env!("CARGO_PKG_VERSION"));
+pub(crate) const ALT_SETTINGS: usize = 2;
+pub(crate) const ALT_STRS: &'static [&'static str] = &[concat!("DFU Bootloader ", env!("CARGO_PKG_VERSION")), "TEST"];
 
 // URL which will pop up when DFU device is plugged in
 pub(crate) const WEBUSB_URL: &'static str = "devanlai.github.io/webdfu/dfu-util";
